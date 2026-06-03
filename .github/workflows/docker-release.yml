@@ -32,10 +32,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - platform: linux/amd64
+          - flavor: sqlite
+            platform: linux/amd64
             runner: ubuntu-latest
-          - platform: linux/arm64
+            dockerfile: Dockerfile
+          - flavor: sqlite
+            platform: linux/arm64
             runner: ubuntu-24.04-arm
+            dockerfile: Dockerfile
+          - flavor: mariadb
+            platform: linux/amd64
+            runner: ubuntu-latest
+            dockerfile: Dockerfile.mariadb
+          - flavor: mariadb
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            dockerfile: Dockerfile.mariadb
 
     steps:
       - name: Checkout
@@ -62,11 +74,12 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ needs.prepare.outputs.image }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          cache-from: type=gha,scope=${{ matrix.flavor }}-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.flavor }}-${{ matrix.platform }}
 
       - name: Export digest
         run: |
@@ -77,11 +90,11 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digest-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          name: digest-${{ matrix.flavor }}-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
           path: /tmp/digests/*
           retention-days: 1
 
-  merge:
+  merge-sqlite:
     runs-on: ubuntu-latest
     needs: [prepare, build]
     permissions:
@@ -89,10 +102,52 @@ jobs:
       packages: write
 
     steps:
-      - name: Download digests
+      - name: Download SQLite digests
         uses: actions/download-artifact@v4
         with:
-          pattern: digest-*
+          pattern: digest-sqlite-*
+          merge-multiple: true
+          path: /tmp/digests
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ needs.prepare.outputs.image }}
+          flavor:
+            suffix=-sqlite
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Create and push manifest
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ needs.prepare.outputs.image }}@sha256:%s ' *)
+
+  merge-mariadb:
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download MariaDB digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-mariadb-*
           merge-multiple: true
           path: /tmp/digests
 
@@ -123,7 +178,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: merge
+    needs: merge-mariadb
     if: github.event_name == 'release'
     continue-on-error: true
 
