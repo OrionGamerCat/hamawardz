@@ -26,7 +26,12 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 COPY . .
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN mkdir -p bootstrap/cache \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/views \
+        storage/logs \
+    && composer install --no-dev --optimize-autoloader --no-interaction
 
 RUN printf '<VirtualHost *:80>\n\
     ServerAdmin webmaster@localhost\n\
