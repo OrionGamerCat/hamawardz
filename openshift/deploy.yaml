@@ -97,3 +97,51 @@ spec:
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hamawardz-scheduler
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: scheduler
+              image: ghcr.io/oriongamercat/hamawardz:latest
+              command: ["php", "/var/www/html/artisan", "schedule:run"]
+              env:
+                - name: APP_URL
+                  value: "https://hamawardz.apps.example.com"
+                - name: DB_CONNECTION
+                  value: "mysql"
+                - name: DB_HOST
+                  value: "hamawardz-db"
+                - name: DB_DATABASE
+                  value: "hamawardz"
+                - name: DB_USERNAME
+                  value: "hamawardz"
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: hamawardz-db-secret
+                      key: password
+              volumeMounts:
+                - name: storage
+                  mountPath: /var/www/html/storage
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                seccompProfile:
+                  type: RuntimeDefault
+                capabilities:
+                  drop:
+                    - ALL
+          volumes:
+            - name: storage
+              persistentVolumeClaim:
+                claimName: hamawardz-storage
