@@ -42,7 +42,9 @@ fi
 # Create SQLite database file if missing
 if [ ! -f database/database.sqlite ]; then
     touch database/database.sqlite
-    chown www-data:www-data database/database.sqlite
+    if [ "$(id -u)" = "0" ]; then
+        chown www-data:www-data database/database.sqlite
+    fi
 fi
 
 # Trust all proxies so Laravel honours X-Forwarded-Proto from Traefik
@@ -57,6 +59,8 @@ php artisan storage:link 2>/dev/null || true
 # Ensure images directory exists with correct permissions
 mkdir -p public/storage/images
 chmod -R a+rw public/storage/images
-chown -R www-data:www-data storage bootstrap/cache database
+if [ "$(id -u)" = "0" ]; then
+    chown -R www-data:www-data storage bootstrap/cache database
+fi
 
 exec "$@"

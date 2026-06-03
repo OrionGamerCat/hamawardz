@@ -18,8 +18,10 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-enable opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+# Enable Apache mod_rewrite and switch to port 8080 for non-root compatibility
+RUN a2enmod rewrite \
+    && sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf \
+    && chmod g+w /etc/apache2/envvars
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -33,7 +35,7 @@ RUN mkdir -p bootstrap/cache \
         storage/logs \
     && composer install --no-dev --optimize-autoloader --no-interaction
 
-RUN printf '<VirtualHost *:80>\n\
+RUN printf '<VirtualHost *:8080>\n\
     ServerAdmin webmaster@localhost\n\
     ServerName ${SERVER_NAME}\n\
     DocumentRoot /var/www/html/public\n\
@@ -46,8 +48,8 @@ RUN printf '<VirtualHost *:80>\n\
     CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
 </VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html \
+# Set permissions — group owner root (GID 0) allows OpenShift's arbitrary UID to write
+RUN chown -R www-data:root /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
@@ -57,5 +59,5 @@ RUN cp /var/www/html/storage/app/version.txt /var/www/html/storage/app/version.t
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-EXPOSE 80
+EXPOSE 8080
 ENTRYPOINT ["docker-entrypoint.sh"]

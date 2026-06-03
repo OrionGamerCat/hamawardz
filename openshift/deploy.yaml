@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hamawardz-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hamawardz-database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hamawardz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hamawardz
+  template:
+    metadata:
+      labels:
+        app: hamawardz
+    spec:
+      containers:
+        - name: hamawardz
+          image: ghcr.io/oriongamercat/hamawardz:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_URL
+              value: "https://hamawardz.apps.example.com"
+            - name: SERVER_NAME
+              value: "hamawardz.apps.example.com"
+            - name: APP_IMPRESSUM_URL
+              value: ""
+            - name: APP_DATA_PROTECTION_URL
+              value: ""
+            - name: WAVELOG_URL
+              value: ""
+            - name: WAVELOG_API_KEY
+              value: ""
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+            - name: database
+              mountPath: /var/www/html/database
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: hamawardz-storage
+        - name: database
+          persistentVolumeClaim:
+            claimName: hamawardz-database
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hamawardz
+spec:
+  selector:
+    app: hamawardz
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: hamawardz
+spec:
+  to:
+    kind: Service
+    name: hamawardz
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
