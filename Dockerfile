@@ -28,8 +28,18 @@ WORKDIR /var/www/html
 COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Copy Apache vhost config
-COPY apache-hamawardz.conf /etc/apache2/sites-available/000-default.conf
+RUN printf '<VirtualHost *:80>\n\
+    ServerAdmin webmaster@localhost\n\
+    ServerName ${SERVER_NAME}\n\
+    DocumentRoot /var/www/html/public\n\
+    <Directory /var/www/html/public>\n\
+        Options Indexes MultiViews FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>\n' > /etc/apache2/sites-available/000-default.conf
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
