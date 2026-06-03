@@ -3,6 +3,7 @@ FROM php:8.2-apache
 # Install system dependencies and PHP extensions
 RUN apt-get update && apt-get install -y \
     unzip \
+    cron \
     libpng-dev \
     libzip-dev \
     libxml2-dev \
@@ -53,6 +54,9 @@ RUN chown -R www-data:root /var/www/html \
     && chmod -R 755 /var/www/html \
     && chmod -R 775 /var/www/html/storage \
     && chmod -R 775 /var/www/html/bootstrap/cache
+
+RUN echo "* * * * * www-data php /var/www/html/artisan schedule:run >> /dev/null 2>&1" > /etc/cron.d/hamawardz \
+    && chmod 0644 /etc/cron.d/hamawardz
 
 RUN cp /var/www/html/storage/app/version.txt /var/www/html/storage/app/version.txt.bak
 
