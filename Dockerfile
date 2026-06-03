@@ -10,12 +10,12 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     && docker-php-ext-install \
         gd \
-        opcache \
         mbstring \
         bcmath \
         zip \
         pdo \
         pdo_sqlite \
+    && docker-php-ext-enable opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite
