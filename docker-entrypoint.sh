@@ -22,6 +22,10 @@ fi
 sed -i "s!APP_ENV=.*!APP_ENV=${APP_ENV:-production}!" .env
 sed -i "s!APP_DEBUG=.*!APP_DEBUG=${APP_DEBUG:-false}!" .env
 sed -i "s!APP_URL=.*!APP_URL=${APP_URL:-http://localhost}!" .env
+sed -i "s!APP_IMPRESSUM_URL=.*!APP_IMPRESSUM_URL=${APP_IMPRESSUM_URL:-}!" .env
+sed -i "s!APP_DATA_PROTECTION_URL=.*!APP_DATA_PROTECTION_URL=${APP_DATA_PROTECTION_URL:-}!" .env
+sed -i "s!#WAVELOG_URL=.*!WAVELOG_URL=${WAVELOG_URL:-}!" .env
+sed -i "s!#WAVELOG_API_KEY=.*!WAVELOG_API_KEY=${WAVELOG_API_KEY:-}!" .env
 sed -i "s!DB_CONNECTION=.*!DB_CONNECTION=sqlite!" .env
 sed -i "s!DB_DATABASE=.*!DB_DATABASE=database.sqlite!" .env
 
