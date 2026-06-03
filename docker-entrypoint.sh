@@ -26,8 +26,22 @@ sed -i "s!APP_IMPRESSUM_URL=.*!APP_IMPRESSUM_URL=${APP_IMPRESSUM_URL:-}!" .env
 sed -i "s!APP_DATA_PROTECTION_URL=.*!APP_DATA_PROTECTION_URL=${APP_DATA_PROTECTION_URL:-}!" .env
 sed -i "s!#WAVELOG_URL=.*!WAVELOG_URL=${WAVELOG_URL:-}!" .env
 sed -i "s!#WAVELOG_API_KEY=.*!WAVELOG_API_KEY=${WAVELOG_API_KEY:-}!" .env
-sed -i "s!DB_CONNECTION=.*!DB_CONNECTION=sqlite!" .env
-sed -i "s!DB_DATABASE=.*!DB_DATABASE=database.sqlite!" .env
+if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ]; then
+    sed -i "s!DB_CONNECTION=.*!DB_CONNECTION=sqlite!" .env
+    sed -i "s!DB_DATABASE=.*!DB_DATABASE=database.sqlite!" .env
+else
+    sed -i "s!DB_CONNECTION=.*!DB_CONNECTION=${DB_CONNECTION}!" .env
+    sed -i "s!#DB_HOST=.*!DB_HOST=${DB_HOST:-localhost}!" .env
+    sed -i "s!#DB_PORT=.*!DB_PORT=${DB_PORT:-3306}!" .env
+    sed -i "s!#DB_DATABASE=.*!DB_DATABASE=${DB_DATABASE:-hamawardz}!" .env
+    sed -i "s!#DB_USERNAME=.*!DB_USERNAME=${DB_USERNAME:-hamawardz}!" .env
+    sed -i "s!#DB_PASSWORD=.*!DB_PASSWORD=${DB_PASSWORD:-}!" .env
+
+    until php -r "new PDO('mysql:host=${DB_HOST:-localhost};port=${DB_PORT:-3306}', '${DB_USERNAME:-hamawardz}', '${DB_PASSWORD:-}');" 2>/dev/null; do
+        echo "Waiting for database..."
+        sleep 2
+    done
+fi
 
 # Generate app key if not already set
 if grep -q "APP_KEY=$" .env || grep -q "APP_KEY=SomeRandomString" .env; then
@@ -40,7 +54,7 @@ if [ ! -f storage/app/version.txt ]; then
 fi
 
 # Create SQLite database file if missing
-if [ ! -f database/database.sqlite ]; then
+if [ "${DB_CONNECTION:-sqlite}" = "sqlite" ] && [ ! -f database/database.sqlite ]; then
     touch database/database.sqlite
     if [ "$(id -u)" = "0" ]; then
         chown www-data:www-data database/database.sqlite
@@ -62,5 +76,7 @@ chmod -R a+rw public/storage/images
 if [ "$(id -u)" = "0" ]; then
     chown -R www-data:www-data storage bootstrap/cache database
 fi
+
+cron
 
 exec "$@"
