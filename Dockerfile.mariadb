@@ -14,14 +14,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
-RUN --mount=type=secret,id=GITHUB_TOKEN \
-    mkdir -p bootstrap/cache \
+RUN mkdir -p bootstrap/cache \
         storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
-    && COMPOSER_AUTH="{\"github-oauth\":{\"github.com\":\"$(cat /run/secrets/GITHUB_TOKEN)\"}}" \
-       composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
+    && composer config preferred-install.j4nr6n/adif source \
+    && composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 
 RUN printf '<VirtualHost *:8080>\n\
     ServerAdmin webmaster@localhost\n\

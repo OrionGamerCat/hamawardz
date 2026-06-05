@@ -80,8 +80,6 @@ jobs:
           outputs: type=image,name=${{ env.REGISTRY }}/${{ needs.prepare.outputs.image }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.flavor }}-${{ matrix.platform }}
           cache-to: type=gha,mode=max,scope=${{ matrix.flavor }}-${{ matrix.platform }}
-          secrets: |
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Export digest
         run: |
