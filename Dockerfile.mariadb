@@ -1,12 +1,14 @@
 FROM composer:latest AS vendor
 WORKDIR /var/www/html
 COPY . .
-RUN mkdir -p bootstrap/cache \
+RUN --mount=type=secret,id=GITHUB_TOKEN \
+    mkdir -p bootstrap/cache \
         storage/framework/cache/data \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
-    && composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
+    && COMPOSER_AUTH="{\"github-oauth\":{\"github.com\":\"$(cat /run/secrets/GITHUB_TOKEN)\"}}" \
+       composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 
 FROM php:8.2-apache
 
