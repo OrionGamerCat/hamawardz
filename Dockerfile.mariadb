@@ -6,7 +6,7 @@ RUN mkdir -p bootstrap/cache \
         storage/framework/sessions \
         storage/framework/views \
         storage/logs \
-    && composer install --no-dev --optimize-autoloader --no-interaction
+    && composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 
 FROM php:8.2-apache
 
