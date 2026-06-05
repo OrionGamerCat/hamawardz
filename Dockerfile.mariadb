@@ -1,6 +1,19 @@
-FROM composer:latest AS vendor
+FROM php:8.2-apache
+
+RUN apt-get update && apt-get install -y \
+        unzip git cron libpng-dev libzip-dev libxml2-dev libonig-dev default-libmysqlclient-dev \
+    && docker-php-ext-install gd mbstring bcmath zip pdo pdo_mysql \
+    && docker-php-ext-enable opcache \
+    && a2enmod rewrite \
+    && sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf \
+    && chmod g+w /etc/apache2/envvars \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 WORKDIR /var/www/html
 COPY . .
+
 RUN --mount=type=secret,id=GITHUB_TOKEN \
     mkdir -p bootstrap/cache \
         storage/framework/cache/data \
@@ -9,20 +22,6 @@ RUN --mount=type=secret,id=GITHUB_TOKEN \
         storage/logs \
     && COMPOSER_AUTH="{\"github-oauth\":{\"github.com\":\"$(cat /run/secrets/GITHUB_TOKEN)\"}}" \
        composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
-
-FROM php:8.2-apache
-
-RUN apt-get update && apt-get install -y \
-        unzip cron libpng-dev libzip-dev libxml2-dev libonig-dev default-libmysqlclient-dev \
-    && docker-php-ext-install gd mbstring bcmath zip pdo pdo_mysql \
-    && docker-php-ext-enable opcache \
-    && a2enmod rewrite \
-    && sed -i 's/Listen 80$/Listen 8080/' /etc/apache2/ports.conf \
-    && chmod g+w /etc/apache2/envvars \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /var/www/html
-COPY --from=vendor /var/www/html/ .
 
 RUN printf '<VirtualHost *:8080>\n\
     ServerAdmin webmaster@localhost\n\
